@@ -2,7 +2,7 @@
  * @Author: uncoder 
  * @Date: 2018-02-05 17:48:19 
  * @Last Modified by: uncoder
- * @Last Modified time: 2018-02-26 15:36:35
+ * @Last Modified time: 2018-02-26 17:32:28
  */
 import './common/style/index.less';
 
@@ -95,32 +95,50 @@ function cloneCanvas(oldCanvas) {
 	return newCanvas;
 }
 function _animateType(ctx, data, resolve, tick) {
-	// 格式化数据
-	let arry = [];
-	for (let i = 1; i < data.length; i += 1) {
-		const front = data[i - 1].split(' ');
-		const end = data[i].split(' ');
-		const points = [parseInt(front[0]), parseInt(front[1]), parseInt(end[0]), parseInt(end[1])];
-		arry.push(points);
+	// index
+	let startIndex = 1;
+	// 克隆数据
+	let points = [];
+	for (let i = 0; i < data.length; i += 1) {
+		points.push(data[i]);
 	}
 	let oldTime = Date.now();
 	let rafid = window.requestAnimationFrame(step);
 	function step() {
 		const newTime = Date.now();
-		if (newTime - oldTime > tick) {
+		if (newTime - oldTime > tick * 2) {
 			oldTime = newTime;
-			if (arry.length == 0) {
+			if (startIndex >= points.length / 3) {
+				// 这个地方有可能会丢点，懒一会再改
 				window.cancelAnimationFrame(rafid);
 				// canvasCache = cloneCanvas(ctx);
 				canvasCache = ctx.getImageData(0, 0, canvasWidth, canvasHeigth);
 				resolve('next');
 			} else {
-				const point = arry.shift();
-				ctx.beginPath();
-				ctx.moveTo(point[0] * scale, point[1] * scale);
-				ctx.lineTo(point[2] * scale, point[3] * scale);
+				//贝塞尔曲线
+				const animatePoints = points.slice((startIndex - 1) * 3, startIndex * 3);
+				if (animatePoints.length == 3) {
+					ctx.beginPath();
+					const startPoint = points[(startIndex - 1) * 3 == 0 ? 0 : (startIndex - 1) * 3 - 1].split(' ');
+					ctx.moveTo(startPoint[0] * scale, startPoint[1] * scale);
+					ctx.lineTo(animatePoints[0] * scale, animatePoints[1] * scale);
+					const control1 = animatePoints[0].split(' ');
+					const control2 = animatePoints[1].split(' ');
+					const stop = animatePoints[2].split(' ');
+					ctx.bezierCurveTo(
+						control1[0] * scale,
+						control1[1] * scale,
+						control2[0] * scale,
+						control2[1] * scale,
+						stop[0] * scale,
+						stop[1] * scale
+					);
+				} else {
+					console.log('长度不够');
+				}
 				ctx.closePath();
 				ctx.stroke();
+				startIndex++;
 				rafid = window.requestAnimationFrame(step);
 			}
 		} else {
